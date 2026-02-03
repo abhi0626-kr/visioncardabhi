@@ -7,11 +7,12 @@ import { VisionGrid } from '@/components/vision/VisionGrid';
 import { FocusMode } from '@/components/vision/FocusMode';
 import { EditTheoryDialog } from '@/components/vision/EditTheoryDialog';
 import { EditWishDialog } from '@/components/vision/EditWishDialog';
+import { EditImageDialog } from '@/components/vision/EditImageDialog';
 import { Button } from '@/components/ui/button';
 import { Focus } from 'lucide-react';
 
 const Index = () => {
-  const [images] = useState<VisionImage[]>(initialImages);
+  const [images, setImages] = useState<VisionImage[]>(initialImages);
   const [videos] = useState<VisionVideo[]>(initialVideos);
   const [theories, setTheories] = useState<Theory[]>(initialTheories);
   const [wishes, setWishes] = useState<Wish[]>(initialWishes);
@@ -23,6 +24,7 @@ const Index = () => {
   // Edit dialogs state
   const [editingTheory, setEditingTheory] = useState<Theory | null>(null);
   const [editingWish, setEditingWish] = useState<Wish | null>(null);
+  const [editingImage, setEditingImage] = useState<VisionImage | null>(null);
 
   const handleAddTheory = useCallback((newTheory: Omit<Theory, 'id'>) => {
     setTheories(prev => [
@@ -34,6 +36,13 @@ const Index = () => {
   const handleAddWish = useCallback((newWish: Omit<Wish, 'id'>) => {
     setWishes(prev => [
       { ...newWish, id: Date.now().toString() },
+      ...prev,
+    ]);
+  }, []);
+
+  const handleAddImage = useCallback((newImage: Omit<VisionImage, 'id'>) => {
+    setImages(prev => [
+      { ...newImage, id: Date.now().toString() },
       ...prev,
     ]);
   }, []);
@@ -63,10 +72,19 @@ const Index = () => {
     setWishes(prev => prev.filter(w => w.id !== id));
   }, []);
 
+  // Image handlers
+  const handleSaveImage = useCallback((updatedImage: VisionImage) => {
+    setImages(prev => prev.map(img => img.id === updatedImage.id ? updatedImage : img));
+  }, []);
+
+  const handleDeleteImage = useCallback((id: string) => {
+    setImages(prev => prev.filter(img => img.id !== id));
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Header */}
-      <Header onAddTheory={handleAddTheory} onAddWish={handleAddWish} />
+      <Header onAddTheory={handleAddTheory} onAddWish={handleAddWish} onAddImage={handleAddImage} />
       
       {/* Main Content */}
       <main className="container pb-16">
@@ -97,6 +115,7 @@ const Index = () => {
           onToggleWish={handleToggleWish}
           onEditTheory={setEditingTheory}
           onEditWish={setEditingWish}
+          onEditImage={setEditingImage}
         />
       </main>
       
@@ -134,6 +153,14 @@ const Index = () => {
         onOpenChange={(open) => !open && setEditingWish(null)}
         onSave={handleSaveWish}
         onDelete={handleDeleteWish}
+      />
+
+      <EditImageDialog
+        image={editingImage}
+        open={!!editingImage}
+        onOpenChange={(open) => !open && setEditingImage(null)}
+        onSave={handleSaveImage}
+        onDelete={handleDeleteImage}
       />
     </div>
   );

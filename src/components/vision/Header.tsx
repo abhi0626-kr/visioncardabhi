@@ -1,13 +1,14 @@
 import { AddContentDialog } from './AddContentDialog';
-import { Theory, Wish } from '@/types/vision';
+import { Theory, Wish, VisionImage } from '@/types/vision';
 import { Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   onAddTheory: (theory: Omit<Theory, 'id'>) => void;
   onAddWish: (wish: Omit<Wish, 'id'>) => void;
+  onAddImage: (image: Omit<VisionImage, 'id'>) => void;
 }
 
-export function Header({ onAddTheory, onAddWish }: HeaderProps) {
+export function Header({ onAddTheory, onAddWish, onAddImage }: HeaderProps) {
   return (
     <header className="relative overflow-hidden py-16 md:py-24">
       {/* Background gradient */}
@@ -37,7 +38,7 @@ export function Header({ onAddTheory, onAddWish }: HeaderProps) {
           
           {/* CTA */}
           <div className="pt-4">
-            <AddContentDialog onAddTheory={onAddTheory} onAddWish={onAddWish} />
+            <AddContentDialog onAddTheory={onAddTheory} onAddWish={onAddWish} onAddImage={onAddImage} />
           </div>
         </div>
       </div>

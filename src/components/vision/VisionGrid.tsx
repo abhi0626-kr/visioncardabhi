@@ -14,6 +14,7 @@ interface VisionGridProps {
   onToggleWish: (id: string) => void;
   onEditTheory: (theory: Theory) => void;
   onEditWish: (wish: Wish) => void;
+  onEditImage: (image: VisionImage) => void;
 }
 
 type GridItem = 
@@ -31,6 +32,7 @@ export function VisionGrid({
   onToggleWish,
   onEditTheory,
   onEditWish,
+  onEditImage,
 }: VisionGridProps) {
   // Combine and filter all items
   const filteredItems = useMemo(() => {
@@ -78,7 +80,7 @@ export function VisionGrid({
         >
           {item.type === 'theory' && <TheoryCard theory={item.data} onEdit={onEditTheory} />}
           {item.type === 'wish' && <WishCard wish={item.data} onToggle={onToggleWish} onEdit={onEditWish} />}
-          {item.type === 'image' && <ImageCard image={item.data} />}
+          {item.type === 'image' && <ImageCard image={item.data} onEdit={onEditImage} />}
           {item.type === 'video' && <VideoCard video={item.data} />}
         </div>
       ))}
