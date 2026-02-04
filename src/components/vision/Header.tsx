@@ -1,6 +1,5 @@
 import { AddContentDialog } from './AddContentDialog';
 import { Theory, Wish, VisionImage } from '@/types/vision';
-import { Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   onAddTheory: (theory: Omit<Theory, 'id'>) => void;
@@ -21,8 +20,13 @@ export function Header({ onAddTheory, onAddWish, onAddImage }: HeaderProps) {
       <div className="container relative z-10">
         <div className="max-w-3xl mx-auto text-center space-y-6">
           {/* Decorative icon */}
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gold/10 mb-2">
-            <Sparkles className="h-6 w-6 text-gold" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gold/10 mb-2">
+            <img
+              src="https://i.pinimg.com/736x/db/0e/e2/db0ee2de02e731141a8394b059f54c04.jpg"
+              alt="Vision Board logo"
+              className="h-16 w-16 object-contain rounded-full"
+              loading="lazy"
+            />
           </div>
           
           {/* Title */}
