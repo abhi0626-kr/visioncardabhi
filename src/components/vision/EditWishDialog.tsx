@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Wish, Category } from '@/types/vision';
 import { categoryLabels } from '@/data/initialData';
 import {
@@ -37,14 +37,14 @@ export function EditWishDialog({ wish, open, onOpenChange, onSave, onDelete }: E
   const [progress, setProgress] = useState(wish?.progress || 0);
 
   // Reset form when wish changes
-  useState(() => {
+  useEffect(() => {
     if (wish) {
       setTitle(wish.title);
       setDescription(wish.description || '');
       setCategory(wish.category);
       setProgress(wish.progress || 0);
     }
-  });
+  }, [wish]);
 
   const handleSave = () => {
     if (!wish || !title.trim()) return;

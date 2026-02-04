@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Category, Theory, Wish, VisionImage, VisionVideo } from '@/types/vision';
 import { initialImages, initialVideos, initialTheories, initialWishes } from '@/data/initialData';
 import { Header } from '@/components/vision/Header';
@@ -9,14 +10,52 @@ import { EditTheoryDialog } from '@/components/vision/EditTheoryDialog';
 import { EditWishDialog } from '@/components/vision/EditWishDialog';
 import { EditImageDialog } from '@/components/vision/EditImageDialog';
 import { Button } from '@/components/ui/button';
-import { Focus } from 'lucide-react';
+import { Focus, LogOut } from 'lucide-react';
+import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/lib/auth';
+
+const mapImageRow = (row: any): VisionImage => ({
+  id: row.id,
+  src: row.src,
+  alt: row.alt,
+  category: row.category as Category,
+});
+
+const mapVideoRow = (row: any): VisionVideo => ({
+  id: row.id,
+  url: row.url,
+  title: row.title,
+  category: row.category as Category,
+  thumbnail: row.thumbnail ?? undefined,
+});
+
+const mapTheoryRow = (row: any): Theory => ({
+  id: row.id,
+  title: row.title,
+  content: row.content,
+  author: row.author ?? undefined,
+  category: row.category as Category,
+});
+
+const mapWishRow = (row: any): Wish => ({
+  id: row.id,
+  title: row.title,
+  description: row.description ?? undefined,
+  category: row.category as Category,
+  completed: row.completed,
+  progress: row.progress ?? undefined,
+});
 
 const Index = () => {
-  const [images, setImages] = useState<VisionImage[]>(initialImages);
-  const [videos] = useState<VisionVideo[]>(initialVideos);
-  const [theories, setTheories] = useState<Theory[]>(initialTheories);
-  const [wishes, setWishes] = useState<Wish[]>(initialWishes);
+  const navigate = useNavigate();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const [images, setImages] = useState<VisionImage[]>([]);
+  const [videos, setVideos] = useState<VisionVideo[]>([]);
+  const [theories, setTheories] = useState<Theory[]>([]);
+  const [wishes, setWishes] = useState<Wish[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<Category | 'all'>('all');
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   // Focus mode state
   const [focusModeOpen, setFocusModeOpen] = useState(false);
@@ -26,68 +65,294 @@ const Index = () => {
   const [editingWish, setEditingWish] = useState<Wish | null>(null);
   const [editingImage, setEditingImage] = useState<VisionImage | null>(null);
 
-  const handleAddTheory = useCallback((newTheory: Omit<Theory, 'id'>) => {
-    setTheories(prev => [
-      { ...newTheory, id: Date.now().toString() },
-      ...prev,
-    ]);
-  }, []);
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+  }, [user, authLoading, navigate]);
 
-  const handleAddWish = useCallback((newWish: Omit<Wish, 'id'>) => {
-    setWishes(prev => [
-      { ...newWish, id: Date.now().toString() },
-      ...prev,
-    ]);
-  }, []);
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !user) return;
 
-  const handleAddImage = useCallback((newImage: Omit<VisionImage, 'id'>) => {
-    setImages(prev => [
-      { ...newImage, id: Date.now().toString() },
-      ...prev,
-    ]);
-  }, []);
+    let isMounted = true;
 
-  const handleToggleWish = useCallback((id: string) => {
-    setWishes(prev => prev.map(wish => 
-      wish.id === id 
-        ? { ...wish, completed: !wish.completed, progress: wish.completed ? wish.progress : 100 }
-        : wish
-    ));
+    const loadData = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+
+      const [imagesResult, videosResult, theoriesResult, wishesResult] = await Promise.all([
+        supabase.from('vision_images').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('vision_videos').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('vision_theories').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('vision_wishes').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      ]);
+
+      if (!isMounted) return;
+
+      if (imagesResult.error || videosResult.error || theoriesResult.error || wishesResult.error) {
+        setLoadError('Failed to load data from Supabase.');
+        setIsLoading(false);
+        return;
+      }
+
+      const imagesData = imagesResult.data?.map(mapImageRow) ?? [];
+      const videosData = videosResult.data?.map(mapVideoRow) ?? [];
+      const theoriesData = theoriesResult.data?.map(mapTheoryRow) ?? [];
+      const wishesData = wishesResult.data?.map(mapWishRow) ?? [];
+
+      // Show demo data if user has no content at all
+      const hasNoData = imagesData.length === 0 && videosData.length === 0 && 
+                        theoriesData.length === 0 && wishesData.length === 0;
+
+      setImages(hasNoData ? initialImages : imagesData);
+      setVideos(hasNoData ? initialVideos : videosData);
+      setTheories(hasNoData ? initialTheories : theoriesData);
+      setWishes(hasNoData ? initialWishes : wishesData);
+      setIsLoading(false);
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  const handleAddTheory = useCallback(async (newTheory: Omit<Theory, 'id'>) => {
+    if (!isSupabaseConfigured || !supabase || !user) {
+      setTheories(prev => [
+        { ...newTheory, id: Date.now().toString() },
+        ...prev,
+      ]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('vision_theories')
+      .insert({
+        user_id: user.id,
+        title: newTheory.title,
+        content: newTheory.content,
+        author: newTheory.author ?? null,
+        category: newTheory.category,
+      })
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      setTheories(prev => [
+        { ...newTheory, id: Date.now().toString() },
+        ...prev,
+      ]);
+      return;
+    }
+
+    setTheories(prev => [mapTheoryRow(data), ...prev]);
+  }, [user]);
+
+  const handleAddWish = useCallback(async (newWish: Omit<Wish, 'id'>) => {
+    if (!isSupabaseConfigured || !supabase || !user) {
+      setWishes(prev => [
+        { ...newWish, id: Date.now().toString() },
+        ...prev,
+      ]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('vision_wishes')
+      .insert({
+        user_id: user.id,
+        title: newWish.title,
+        description: newWish.description ?? null,
+        category: newWish.category,
+        completed: newWish.completed,
+        progress: newWish.progress ?? null,
+      })
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      setWishes(prev => [
+        { ...newWish, id: Date.now().toString() },
+        ...prev,
+      ]);
+      return;
+    }
+
+    setWishes(prev => [mapWishRow(data), ...prev]);
+  }, [user]);
+
+  const handleAddImage = useCallback(async (newImage: Omit<VisionImage, 'id'>) => {
+    if (!isSupabaseConfigured || !supabase || !user) {
+      setImages(prev => [
+        { ...newImage, id: Date.now().toString() },
+        ...prev,
+      ]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('vision_images')
+      .insert({
+        user_id: user.id,
+        src: newImage.src,
+        alt: newImage.alt,
+        category: newImage.category,
+      })
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      setImages(prev => [
+        { ...newImage, id: Date.now().toString() },
+        ...prev,
+      ]);
+      return;
+    }
+
+    setImages(prev => [mapImageRow(data), ...prev]);
+  }, [user]);
+
+  const handleToggleWish = useCallback(async (id: string) => {
+    let nextCompleted = false;
+    let nextProgress: number | undefined;
+
+    setWishes(prev => prev.map(wish => {
+      if (wish.id !== id) return wish;
+      nextCompleted = !wish.completed;
+      nextProgress = wish.completed ? wish.progress : 100;
+      return { ...wish, completed: nextCompleted, progress: nextProgress };
+    }));
+
+    if (!isSupabaseConfigured || !supabase) return;
+
+    await supabase
+      .from('vision_wishes')
+      .update({
+        completed: nextCompleted,
+        progress: nextProgress ?? null,
+      })
+      .eq('id', id);
   }, []);
 
   // Edit handlers
-  const handleSaveTheory = useCallback((updatedTheory: Theory) => {
+  const handleSaveTheory = useCallback(async (updatedTheory: Theory) => {
     setTheories(prev => prev.map(t => t.id === updatedTheory.id ? updatedTheory : t));
+
+    if (!isSupabaseConfigured || !supabase) return;
+
+    await supabase
+      .from('vision_theories')
+      .update({
+        title: updatedTheory.title,
+        content: updatedTheory.content,
+        author: updatedTheory.author ?? null,
+        category: updatedTheory.category,
+      })
+      .eq('id', updatedTheory.id);
   }, []);
 
-  const handleDeleteTheory = useCallback((id: string) => {
+  const handleDeleteTheory = useCallback(async (id: string) => {
     setTheories(prev => prev.filter(t => t.id !== id));
+
+    if (!isSupabaseConfigured || !supabase) return;
+
+    await supabase
+      .from('vision_theories')
+      .delete()
+      .eq('id', id);
   }, []);
 
-  const handleSaveWish = useCallback((updatedWish: Wish) => {
+  const handleSaveWish = useCallback(async (updatedWish: Wish) => {
     setWishes(prev => prev.map(w => w.id === updatedWish.id ? updatedWish : w));
+
+    if (!isSupabaseConfigured || !supabase) return;
+
+    await supabase
+      .from('vision_wishes')
+      .update({
+        title: updatedWish.title,
+        description: updatedWish.description ?? null,
+        category: updatedWish.category,
+        completed: updatedWish.completed,
+        progress: updatedWish.progress ?? null,
+      })
+      .eq('id', updatedWish.id);
   }, []);
 
-  const handleDeleteWish = useCallback((id: string) => {
+  const handleDeleteWish = useCallback(async (id: string) => {
     setWishes(prev => prev.filter(w => w.id !== id));
+
+    if (!isSupabaseConfigured || !supabase) return;
+
+    await supabase
+      .from('vision_wishes')
+      .delete()
+      .eq('id', id);
   }, []);
 
   // Image handlers
-  const handleSaveImage = useCallback((updatedImage: VisionImage) => {
+  const handleSaveImage = useCallback(async (updatedImage: VisionImage) => {
     setImages(prev => prev.map(img => img.id === updatedImage.id ? updatedImage : img));
+
+    if (!isSupabaseConfigured || !supabase) return;
+
+    await supabase
+      .from('vision_images')
+      .update({
+        src: updatedImage.src,
+        alt: updatedImage.alt,
+        category: updatedImage.category,
+      })
+      .eq('id', updatedImage.id);
   }, []);
 
-  const handleDeleteImage = useCallback((id: string) => {
+  const handleDeleteImage = useCallback(async (id: string) => {
     setImages(prev => prev.filter(img => img.id !== id));
+
+    if (!isSupabaseConfigured || !supabase) return;
+
+    await supabase
+      .from('vision_images')
+      .delete()
+      .eq('id', id);
   }, []);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Header */}
-      <Header onAddTheory={handleAddTheory} onAddWish={handleAddWish} onAddImage={handleAddImage} />
+      <div className="relative">
+        <Header onAddTheory={handleAddTheory} onAddWish={handleAddWish} onAddImage={handleAddImage} />
+        
+        {/* Logout button in top right */}
+        <div className="absolute top-4 right-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={signOut}
+            className="text-muted-foreground hover:text-foreground"
+            title="Sign out"
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
       
       {/* Main Content */}
       <main className="container pb-16">
+        {isLoading && (
+          <div className="mb-6 rounded-lg border border-border/40 bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
+            Loading your vision board...
+          </div>
+        )}
+        {loadError && (
+          <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {loadError}
+          </div>
+        )}
         {/* Category Filter + Focus Mode */}
         <div className="mb-12 space-y-6">
           <CategoryFilter selected={categoryFilter} onChange={setCategoryFilter} />

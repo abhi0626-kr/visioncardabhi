@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Theory, Category } from '@/types/vision';
 import { categoryLabels } from '@/data/initialData';
 import {
@@ -36,14 +36,14 @@ export function EditTheoryDialog({ theory, open, onOpenChange, onSave, onDelete 
   const [category, setCategory] = useState<Category>(theory?.category || 'personal');
 
   // Reset form when theory changes
-  useState(() => {
+  useEffect(() => {
     if (theory) {
       setTitle(theory.title);
       setContent(theory.content);
       setAuthor(theory.author || '');
       setCategory(theory.category);
     }
-  });
+  }, [theory]);
 
   const handleSave = () => {
     if (!theory || !title.trim() || !content.trim()) return;
