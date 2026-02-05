@@ -8,25 +8,25 @@
   :root {
     /* Palette: #EADACE, #CDA991, #B2A3A1, #A0765E, #56332B */
     --background: 11 33% 25%;        /* #56332B - Dark chocolate */
-    --foreground: 26 38% 86%;        /* #EADACE - Light cream */
+    --foreground: 26 38% 92%;        /* #F5F0ED - Brighter light cream */
 
     --card: 11 33% 30%;              /* Slightly lighter than bg */
-    --card-foreground: 26 38% 86%;   /* #EADACE */
+    --card-foreground: 26 38% 92%;   /* #F5F0ED */
 
     --popover: 11 33% 28%;
-    --popover-foreground: 26 38% 86%;
+    --popover-foreground: 26 38% 92%;
 
     --primary: 22 27% 50%;           /* #A0765E - Warm terracotta */
-    --primary-foreground: 26 38% 92%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 11 33% 35%;
-    --secondary-foreground: 26 38% 80%;
+    --secondary-foreground: 26 38% 88%;
 
     --muted: 11 25% 32%;
-    --muted-foreground: 7 9% 66%;    /* #B2A3A1 - Dusty mauve */
+    --muted-foreground: 26 38% 76%;    /* Brighter for visibility */
 
     --accent: 24 38% 69%;            /* #CDA991 - Warm tan */
-    --accent-foreground: 11 33% 20%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 26 38% 95%;
@@ -40,7 +40,7 @@
     /* Custom tokens - mapped to new palette */
     --gold: 24 38% 69%;              /* #CDA991 - Warm tan (accent) */
     --gold-muted: 22 27% 50%;        /* #A0765E - Terracotta */
-    --cream: 26 38% 86%;             /* #EADACE - Light cream */
+    --cream: 26 38% 92%;             /* #F5F0ED - Brighter light cream */
     --cream-muted: 7 9% 66%;         /* #B2A3A1 - Dusty mauve */
     --charcoal: 11 33% 25%;          /* #56332B - Dark chocolate */
     --charcoal-light: 11 33% 32%;
